@@ -16,6 +16,7 @@
 #  You should have received a copy of the GNU General Public License
 #  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+import os
 import re
 import subprocess
 from argparse import ArgumentParser
@@ -26,23 +27,33 @@ __version__ = "0.1dev"
 
 
 class Device():
+
     def __init__(self, path):
-        # TODO test exists
-        # TODO test is a block device
-        # TODO consider try catch
         # get path, vg, lv and size from lvdisplay
-        out = subprocess.check_output(['sudo', 'lvdisplay', path])
-        lv_display = re.findall('LV Path\s+(.+)\s+'
-                                'LV Name\s+(.+)\s+'
-                                'VG Name\s+(.+)', out)
-        lv_size = re.findall('LV Size\s+(.+)', out)
-        self.path = lv_display[0][0]
-        self.lv = lv_display[0][1]
-        self.vg = lv_display[0][2]
-        self.size = lv_size[0]
+        try:
+            out = subprocess.check_output(['lvdisplay', path])
+        except subprocess.CalledProcessError as e:
+            print e.output
+        except OSError as e:
+            print "OSError: lvdisplay command not found"
+        else:
+            lv_display = re.findall('LV Path\s+(.+)\s+'
+                                    'LV Name\s+(.+)\s+'
+                                    'VG Name\s+(.+)', out)
+            lv_size = re.findall('LV Size\s+(.+)', out)
+            self.path = lv_display[0][0]
+            self.lv = lv_display[0][1]
+            self.vg = lv_display[0][2]
+            self.size = lv_size[0]
+
+    def __str__(self):
+        return ("LV Path: {}\n"
+                "LV Name: {}\n"
+                "VG Name: {}\n"
+                "LV Size: {}".format(self.path, self.lv, self.vg, self.size))
 
     def create_snapshot(self, name, size):
-        # TODO test whether there is enough space
+        # TODO test whether there is enough space lvm does it already?
         pass
         #
 
@@ -72,7 +83,7 @@ def main():
                         action='store', dest='IMAGE',
                         help="destination filename for the backup qcow2 image")
 
-    parser.add_argument("-s", "--snapshot-size",
+    parser.add_argument("-S", "--snapshot-size",
                         action='store', dest='SIZE', type=int,
                         help="")
 
@@ -81,9 +92,13 @@ def main():
 
     args = parser.parse_args()
 
-    # Check vg
-    # Check lv
-    # Check destination isdir
+    src_device = Device(args.SOURCE)
+    print src_device
+    if os.path.isdir(args.DESTINATION):
+        dst_dir = args.DESTINATION
+    else:
+        print "OSError: '{}' invalid destination".format(args.DESTINATION)
+
     # Check pending snapshots
     # Check space left in the vg
     # Snapshot lv
