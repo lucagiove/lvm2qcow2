@@ -18,6 +18,8 @@
 
 import os
 import re
+import sys
+import time
 import subprocess
 from argparse import ArgumentParser
 
@@ -33,9 +35,12 @@ class Device():
         try:
             out = subprocess.check_output(['lvdisplay', path])
         except subprocess.CalledProcessError as e:
+            print e.cmd
             print e.output
+            sys.exit(1)
         except OSError as e:
             print "OSError: lvdisplay command not found"
+            sys.exit(1)
         else:
             lv_display = re.findall('LV Path\s+(.+)\s+'
                                     'LV Name\s+(.+)\s+'
@@ -52,18 +57,61 @@ class Device():
                 "VG Name: {}\n"
                 "LV Size: {}".format(self.path, self.lv, self.vg, self.size))
 
-    def create_snapshot(self, name, size):
-        # TODO test whether there is enough space lvm does it already?
-        pass
-        #
+    def create_snapshot(self, name=None, snapshot_size='5g'):
+        if name is None:
+            snapshot_name = '{}-lvm2qcow2-snapshot'.format(self.lv)
+        cmd_args = '-s {} -n {} -L {}'.format(self.path, snapshot_name,
+                                              snapshot_size)
+        try:
+            subprocess.check_output(['lvcreate'] + cmd_args.split())
+        except subprocess.CalledProcessError as e:
+            print e.cmd
+            print e.output
+            sys.exit(1)
+        except OSError as e:
+            print "OSError: lvcreate command not found"
+            sys.exit(1)
+        else:
+            snapshot_name = os.path.join(os.path.dirname(self.path),
+                                         snapshot_name)
+            return snapshot_name
 
-    def list_snapshot(self, pattern):
-        pass
-
-    def delete_snapshot(self, name):
+    def delete_snapshot(self, name=None):
         # check if not used
-        pass
-        # delete the snapshot
+        if name is None:
+            name = '{}-lvm2qcow2-snapshot'.format(self.lv)
+        # adding the full path
+        snapshot_name = os.path.join(os.path.dirname(self.path), name)
+        try:
+            subprocess.check_output(['lvremove', '-f'] + snapshot_name.split())
+        except subprocess.CalledProcessError as e:
+            print e.cmd
+            print e.output
+            sys.exit(1)
+        except OSError as e:
+            print "OSError: lvremove command not found"
+            sys.exit(1)
+        else:
+            return snapshot_name
+
+
+def _qemu_img_cmd(source, destination, image=None):
+    """ Run qemu-img command to convert lv to qcow2:
+    qemu-img convert -c -O qcow2 SOURCE DESTINATION/IMAGE"""
+    if image is None:
+        image = os.path.basename(source).strip()
+        image += '-{}.qcow2'.format(time.strftime('%Y%m%d'))
+
+    cmd_args = '-c -O qcow2 {} {}/{}'.format(source, destination, image)
+    print cmd_args
+
+
+def _md5sum_cmd(filename):
+    pass
+
+
+def _clean_images(image_prefix):
+    pass
 
 
 def main():
@@ -98,12 +146,18 @@ def main():
         dst_dir = args.DESTINATION
     else:
         print "OSError: '{}' invalid destination".format(args.DESTINATION)
+        sys.exit(1)
 
-    # Check pending snapshots
-    # Check space left in the vg
-    # Snapshot lv
-    # Check number of backups
-    # Do qemu-img copy
+    print src_device.create_snapshot()
+    print src_device.delete_snapshot()
+
+    # TODO read a configuration file
+    # TODO check pending snapshots
+    # Check space left in the vg (done by lvcreate itself)
+    # TODO Check number of backups (delete early/after?)
+    # TODO qemu convert image
+    # TODO md5sum file
+    # FIXME add/validate '{}' in subprocess
 
     return 0
 
