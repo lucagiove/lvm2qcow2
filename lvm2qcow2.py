@@ -95,15 +95,23 @@ class Device():
             return snapshot_name
 
 
-def _qemu_img_cmd(source, destination, image=None):
+def _qemu_img_cmd(source, destination, image):
     """ Run qemu-img command to convert lv to qcow2:
     qemu-img convert -c -O qcow2 SOURCE DESTINATION/IMAGE"""
-    if image is None:
-        image = os.path.basename(source).strip()
-        image += '-{}.qcow2'.format(time.strftime('%Y%m%d'))
-
-    cmd_args = '-c -O qcow2 {} {}/{}'.format(source, destination, image)
-    print cmd_args
+    destination = os.path.join(destination, image)
+    # FIXME remove .split find better way to preserve spaces in arguments
+    cmd_args = 'convert -c -O qcow2 {} {}'.format(source, destination)
+    try:
+        subprocess.check_output(['qemu-img'] + cmd_args.split())
+    except subprocess.CalledProcessError as e:
+        print e.cmd
+        print e.output
+        sys.exit(1)
+    except OSError as e:
+        print "OSError: qemu-img command not found"
+        sys.exit(1)
+    else:
+        return destination
 
 
 def _md5sum_cmd(filename):
@@ -127,9 +135,10 @@ def main():
                         help="destination path where the script saves "
                              "the qcow2", required=True)
 
-    parser.add_argument("-q", "--qcow2",
-                        action='store', dest='IMAGE',
-                        help="destination filename for the backup qcow2 image")
+    parser.add_argument("-i", "--image-prefix",
+                        action='store', dest='IMAGE_PREFIX',
+                        help="destination prefix for the backup qcow2 image "
+                             "name")
 
     parser.add_argument("-S", "--snapshot-size",
                         action='store', dest='SIZE', type=int,
@@ -138,27 +147,35 @@ def main():
     parser.add_argument('--version', action='version',
                         version="%(prog)s {}".format(__version__))
 
+    # Validate and manipulate arguments input
     args = parser.parse_args()
-
+    # Create the source device object getting data with lvdisplay
     src_device = Device(args.SOURCE)
-    print src_device
+    # Check destination folder exists and is a directory
     if os.path.isdir(args.DESTINATION):
         dst_dir = args.DESTINATION
     else:
         print "OSError: '{}' invalid destination".format(args.DESTINATION)
         sys.exit(1)
+    # If prefix is not provided lv name will be used as default prefix
+    if args.IMAGE_PREFIX:
+        image_prefix = args.IMAGE_PREFIX
+    else:
+        image_prefix = src_device.lv
+    image = '{}-{}.qcow2'.format(image_prefix, time.strftime('%Y%m%d'))
 
-    print src_device.create_snapshot()
-    print src_device.delete_snapshot()
+    snapshot = src_device.create_snapshot()
+    _qemu_img_cmd(snapshot, dst_dir, image)
 
     # TODO read a configuration file
-    # TODO check pending snapshots
+    # TODO delete check pending snapshots
     # Check space left in the vg (done by lvcreate itself)
     # TODO Check number of backups (delete early/after?)
-    # TODO qemu convert image
     # TODO md5sum file
-    # FIXME add/validate '{}' in subprocess
+    # TODO write a run function to include subprocess code
+    # TODO check image file already exists
 
+    src_device.delete_snapshot()
     return 0
 
 if __name__ == '__main__':
