@@ -20,6 +20,7 @@ import os
 import re
 import sys
 import time
+import glob
 import subprocess
 from argparse import ArgumentParser
 
@@ -95,6 +96,26 @@ class Device():
             return snapshot_name
 
 
+class Images():
+    def __init__(self, path, prefix, suffix='.qcow2'):
+        self.files = [os.path.abspath(i) for i in glob.glob(os.path.join(path,
+                      '{}*{}'.format(prefix, suffix)))]
+        self.files = sorted(self.files, reverse=True)
+
+    def keep_only(self, copies):
+        # TODO delete also md5sum file
+        while len(self.files) > copies:
+            try:
+                subprocess.check_output(['rm'] + self.files.pop().split())
+            except subprocess.CalledProcessError as e:
+                print e.cmd
+                print e.output
+                sys.exit(1)
+
+    def __iter__(self):
+        return self.files.__iter__()
+
+
 def _qemu_img_cmd(source, destination, image):
     """ Run qemu-img command to convert lv to qcow2:
     qemu-img convert -c -O qcow2 SOURCE DESTINATION/IMAGE"""
@@ -114,14 +135,6 @@ def _qemu_img_cmd(source, destination, image):
         return destination
 
 
-def _md5sum_cmd(filename):
-    pass
-
-
-def _clean_images(image_prefix):
-    pass
-
-
 def main():
 
     parser = ArgumentParser()
@@ -139,6 +152,10 @@ def main():
                         action='store', dest='IMAGE_PREFIX',
                         help="destination prefix for the backup qcow2 image "
                              "name")
+
+    parser.add_argument("-c", "--copies",
+                        action='store', dest='COPIES',
+                        help="")
 
     parser.add_argument("-S", "--snapshot-size",
                         action='store', dest='SIZE', type=int,
@@ -164,9 +181,15 @@ def main():
         image_prefix = src_device.lv
     image = '{}-{}.qcow2'.format(image_prefix, time.strftime('%Y%m%d'))
 
+    # Create the lv snapshot
     snapshot = src_device.create_snapshot()
     _qemu_img_cmd(snapshot, dst_dir, image)
 
+    # Delete old copies
+    images = Images(dst_dir, image_prefix)
+    images.keep_only(args.COPIES)
+
+    # TODO add parameter defaults and help
     # TODO read a configuration file
     # TODO delete check pending snapshots
     # Check space left in the vg (done by lvcreate itself)
