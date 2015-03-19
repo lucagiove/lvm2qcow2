@@ -29,6 +29,16 @@ __date__ = "2015-02-28"
 __version__ = "0.1dev"
 
 
+# TODO add parameter defaults and help
+# TODO read a configuration file
+# TODO delete check pending snapshots
+# TODO Check space left in the vg (done by lvcreate itself)
+# TODO Check number of backups (delete early/after?)
+# TODO md5sum file
+# TODO write a run function to include subprocess code
+# TODO check image file already exists
+# TODO if exception occurs snapshot should be removed
+
 class Device():
 
     def __init__(self, path):
@@ -104,9 +114,12 @@ class Images():
 
     def keep_only(self, copies):
         # TODO delete also md5sum file
-        while len(self.files) > copies:
+        # 0 means infinite so the loop should not be executed
+        while (len(self.files) > copies) and (copies != 0):
+            image_to_remove = self.files.pop().split()
+            print "removing image: {}".format(image_to_remove[0])
             try:
-                subprocess.check_output(['rm'] + self.files.pop().split())
+                subprocess.check_output(['rm'] + image_to_remove)
             except subprocess.CalledProcessError as e:
                 print e.cmd
                 print e.output
@@ -153,9 +166,10 @@ def main():
                         help="destination prefix for the backup qcow2 image "
                              "name")
 
-    parser.add_argument("-c", "--copies",
-                        action='store', dest='COPIES',
-                        help="")
+    parser.add_argument("-n", "--number-of-copies",
+                        action='store', dest='COPIES', type=int, default=0,
+                        help="0 means infinite, 1 keeps only the current image"
+                             " otherwise keeps the number of specified copies")
 
     parser.add_argument("-S", "--snapshot-size",
                         action='store', dest='SIZE', type=int,
@@ -164,41 +178,43 @@ def main():
     parser.add_argument('--version', action='version',
                         version="%(prog)s {}".format(__version__))
 
+    print "lvm2qcow2 started:", time.strftime('%Y-%m-%d %H:%M:%S')
+
     # Validate and manipulate arguments input
     args = parser.parse_args()
     # Create the source device object getting data with lvdisplay
     src_device = Device(args.SOURCE)
+    print "source: {}".format(src_device.path)
+
     # Check destination folder exists and is a directory
     if os.path.isdir(args.DESTINATION):
         dst_dir = args.DESTINATION
     else:
         print "OSError: '{}' invalid destination".format(args.DESTINATION)
         sys.exit(1)
+    print "destination: {}".format(dst_dir)
+
     # If prefix is not provided lv name will be used as default prefix
     if args.IMAGE_PREFIX:
         image_prefix = args.IMAGE_PREFIX
     else:
         image_prefix = src_device.lv
-    image = '{}-{}.qcow2'.format(image_prefix, time.strftime('%Y%m%d'))
+    timestamp = time.strftime('%Y-%m-%d')
+    image = '{}-{}.qcow2'.format(image_prefix, timestamp)
+    print "image: {}".format(image)
 
     # Create the lv snapshot
     snapshot = src_device.create_snapshot()
-    _qemu_img_cmd(snapshot, dst_dir, image)
+    print "created snapshot: {}".format(snapshot)
+    qcow2_file = _qemu_img_cmd(snapshot, dst_dir, image)
+    print "created image: {}".format(qcow2_file)
+    snapshot = src_device.delete_snapshot()
+    print "deleted: {}".format(snapshot)
 
     # Delete old copies
     images = Images(dst_dir, image_prefix)
     images.keep_only(args.COPIES)
 
-    # TODO add parameter defaults and help
-    # TODO read a configuration file
-    # TODO delete check pending snapshots
-    # Check space left in the vg (done by lvcreate itself)
-    # TODO Check number of backups (delete early/after?)
-    # TODO md5sum file
-    # TODO write a run function to include subprocess code
-    # TODO check image file already exists
-
-    src_device.delete_snapshot()
     return 0
 
 if __name__ == '__main__':
