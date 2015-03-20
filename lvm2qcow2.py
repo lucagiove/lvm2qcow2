@@ -53,13 +53,18 @@ class Device():
             print "OSError: lvdisplay command not found"
             sys.exit(1)
         else:
-            lv_display = re.findall('LV Path\s+(.+)\s+'
-                                    'LV Name\s+(.+)\s+'
-                                    'VG Name\s+(.+)', out)
+            lv_path = re.findall('LV Path\s+(.+)', out)
+            lv_name = re.findall('LV Name\s+(.+)', out)
+            vg_name = re.findall('VG Name\s+(.+)', out)
             lv_size = re.findall('LV Size\s+(.+)', out)
-            self.path = lv_display[0][0]
-            self.lv = lv_display[0][1]
-            self.vg = lv_display[0][2]
+            # on lvm 2.02.66 LV Name is LV Path which does not exists
+            if lv_path:
+                self.path = lv_path[0]
+                self.lv = lv_name[0]
+            else:
+                self.path = lv_name[0]
+                self.lv = os.path.basename(lv_name[0])
+            self.vg = vg_name[0]
             self.size = lv_size[0]
 
     def __str__(self):
