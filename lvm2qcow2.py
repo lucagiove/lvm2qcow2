@@ -25,8 +25,8 @@ import subprocess
 from argparse import ArgumentParser
 
 __author__ = "Luca Giovenzana <luca@giovenzana.org>"
-__date__ = "2015-02-28"
-__version__ = "0.1dev"
+__date__ = "2015-03-21"
+__version__ = "0.1beta"
 
 
 # TODO add parameter defaults and help
@@ -38,6 +38,7 @@ __version__ = "0.1dev"
 # TODO write a run function to include subprocess code
 # TODO check image file already exists
 # TODO if exception occurs snapshot should be removed
+# TODO print data transferrend and the time
 
 class Device():
 
@@ -76,10 +77,10 @@ class Device():
     def create_snapshot(self, name=None, snapshot_size='5g'):
         if name is None:
             snapshot_name = '{}-lvm2qcow2-snapshot'.format(self.lv)
-        cmd_args = '-s {} -n {} -L {}'.format(self.path, snapshot_name,
-                                              snapshot_size)
         try:
-            subprocess.check_output(['lvcreate'] + cmd_args.split())
+            subprocess.check_output(['lvcreate', '-s', self.path,
+                                     '-n', snapshot_name,
+                                     '-L', snapshot_size])
         except subprocess.CalledProcessError as e:
             print e.cmd
             print e.output
@@ -99,7 +100,7 @@ class Device():
         # adding the full path
         snapshot_name = os.path.join(os.path.dirname(self.path), name)
         try:
-            subprocess.check_output(['lvremove', '-f'] + snapshot_name.split())
+            subprocess.check_output(['lvremove', '-f', snapshot_name])
         except subprocess.CalledProcessError as e:
             print e.cmd
             print e.output
@@ -121,10 +122,10 @@ class Images():
         # TODO delete also md5sum file
         # 0 means infinite so the loop should not be executed
         while (len(self.files) > copies) and (copies != 0):
-            image_to_remove = self.files.pop().split()
+            image_to_remove = self.files.pop()
             print "removing image: {}".format(image_to_remove[0])
             try:
-                subprocess.check_output(['rm'] + image_to_remove)
+                subprocess.check_output(['rm', image_to_remove])
             except subprocess.CalledProcessError as e:
                 print e.cmd
                 print e.output
@@ -138,10 +139,9 @@ def _qemu_img_cmd(source, destination, image):
     """ Run qemu-img command to convert lv to qcow2:
     qemu-img convert -c -O qcow2 SOURCE DESTINATION/IMAGE"""
     destination = os.path.join(destination, image)
-    # FIXME remove .split find better way to preserve spaces in arguments
-    cmd_args = 'convert -c -O qcow2 {} {}'.format(source, destination)
     try:
-        subprocess.check_output(['qemu-img'] + cmd_args.split())
+        subprocess.check_output(['qemu-img', 'convert', '-cO', 'qcow2',
+                                 source, destination])
     except subprocess.CalledProcessError as e:
         print e.cmd
         print e.output
