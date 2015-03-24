@@ -125,7 +125,8 @@ class Images():
             image_to_remove = self.files.pop()
             print "removing image: {}".format(image_to_remove[0])
             try:
-                subprocess.check_output(['rm', image_to_remove])
+                # added full path to avoid aliases that works with -i
+                subprocess.check_output(['/bin/rm', image_to_remove])
             except subprocess.CalledProcessError as e:
                 print e.cmd
                 print e.output
