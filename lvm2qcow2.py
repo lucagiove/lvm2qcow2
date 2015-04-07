@@ -25,13 +25,12 @@ import subprocess
 from argparse import ArgumentParser
 
 __author__ = "Luca Giovenzana <luca@giovenzana.org>"
-__date__ = "2015-03-21"
-__version__ = "0.1beta"
+__date__ = "2015-04-08"
+__version__ = "0.1beta2"
 
 
 # TODO add parameter defaults and help
 # TODO read a configuration file
-# TODO delete check pending snapshots
 # TODO Check space left in the vg (done by lvcreate itself)
 # TODO Check number of backups (delete early/after?)
 # TODO md5sum file
@@ -45,10 +44,10 @@ class Device():
     def __init__(self, path):
         # get path, vg, lv and size from lvdisplay
         try:
-            out = subprocess.check_output(['lvdisplay', path])
+            out = subprocess.check_output(['lvdisplay', path],
+                                          stderr=subprocess.STDOUT)
         except subprocess.CalledProcessError as e:
-            print e.cmd
-            print e.output
+            print "ERROR:", e.output
             sys.exit(1)
         except OSError as e:
             print "OSError: lvdisplay command not found"
@@ -76,22 +75,29 @@ class Device():
 
     def create_snapshot(self, name=None, snapshot_size='5g'):
         if name is None:
-            snapshot_name = '{}-lvm2qcow2-snapshot'.format(self.lv)
+            name = '{}-lvm2qcow2-snapshot'.format(self.lv)
         try:
             subprocess.check_output(['lvcreate', '-s', self.path,
-                                     '-n', snapshot_name,
-                                     '-L', snapshot_size])
+                                     '-n', name,
+                                     '-L', snapshot_size],
+                                    stderr=subprocess.STDOUT)
         except subprocess.CalledProcessError as e:
-            print e.cmd
-            print e.output
-            sys.exit(1)
+            if "already exists" in e.output:
+                print "WARNING: {} "\
+                      "already exists deleting it".format(name)
+                # delete the pending snapshot
+                self.delete_snapshot(name)
+                # recursively create the snapshot
+                self.create_snapshot(name)
+            else:
+                print "ERROR:", e.output
+                sys.exit(1)
         except OSError as e:
             print "OSError: lvcreate command not found"
             sys.exit(1)
-        else:
-            snapshot_name = os.path.join(os.path.dirname(self.path),
-                                         snapshot_name)
-            return snapshot_name
+        # adding the full path
+        snapshot_name = os.path.join(os.path.dirname(self.path), name)
+        return snapshot_name
 
     def delete_snapshot(self, name=None):
         # check if not used
@@ -100,16 +106,16 @@ class Device():
         # adding the full path
         snapshot_name = os.path.join(os.path.dirname(self.path), name)
         try:
-            subprocess.check_output(['lvremove', '-f', snapshot_name])
+            subprocess.check_output(['lvremove', '-f', snapshot_name],
+                                    stderr=subprocess.STDOUT)
         except subprocess.CalledProcessError as e:
-            print e.cmd
-            print e.output
+            print "ERROR:", e.output
             sys.exit(1)
         except OSError as e:
             print "OSError: lvremove command not found"
             sys.exit(1)
-        else:
-            return snapshot_name
+
+        return snapshot_name
 
 
 class Images():
@@ -121,15 +127,17 @@ class Images():
     def keep_only(self, copies):
         # TODO delete also md5sum file
         # 0 means infinite so the loop should not be executed
+        print "images:", self.files.pop
+        print "number of copies to keep:", copies
         while (len(self.files) > copies) and (copies != 0):
             image_to_remove = self.files.pop()
             print "removing image: {}".format(image_to_remove[0])
             try:
                 # added full path to avoid aliases that works with -i
-                subprocess.check_output(['/bin/rm', image_to_remove])
+                subprocess.check_output(['/bin/rm', image_to_remove],
+                                        stderr=subprocess.STDOUT)
             except subprocess.CalledProcessError as e:
-                print e.cmd
-                print e.output
+                print "ERROR:", e.output
                 sys.exit(1)
 
     def __iter__(self):
@@ -142,10 +150,10 @@ def _qemu_img_cmd(source, destination, image):
     destination = os.path.join(destination, image)
     try:
         subprocess.check_output(['qemu-img', 'convert', '-cO', 'qcow2',
-                                 source, destination])
+                                 source, destination],
+                                stderr=subprocess.STDOUT)
     except subprocess.CalledProcessError as e:
-        print e.cmd
-        print e.output
+        print "ERROR:", e.output
         sys.exit(1)
     except OSError as e:
         print "OSError: qemu-img command not found"
