@@ -6,6 +6,8 @@ Script that create a live copy of a logical volume and convert it in qcow2 forma
 That's just an example by the way the paths and filenames should be kept for 
 Has been tested on ubuntu 12.04 and 14.04
 
+###Note: Require python >= 2.7
+
 Install git and requirements
 
     apt-get install git python
@@ -34,6 +36,38 @@ lvm2qcow2.py -s /dev/raid/mail-var -d /mnt/hd-2TB/snapshots -n 5 >> /var/log/sna
 lvm2qcow2.py -s /dev/raid/pdc-system -d /mnt/hd-2TB/snapshots -n 5 >> /var/log/snapshot-backup.log
 lvm2qcow2.py -s /dev/raid/pdc-shares -d /mnt/hd-2TB/snapshots -n 5 >> /var/log/snapshot-backup.log
 ```
+
+###Note for CentOS 6.X
+On CentOS 6.X there is only python 2.6 so it's necessary to compile python2.7 or major
+
+In order to compile Python you must first install the development tools:
+```
+yum groupinstall "Development tools" -y
+```
+You also need a few extra libs installed before compiling Python or else you will run into problems later when trying to install various packages:
+```
+yum install zlib-devel -y
+yum install bzip2-devel -y
+yum install openssl-devel -y
+yum install ncurses-devel -y
+yum install sqlite-devel -y
+```
+
+Now let's start to compile and install python 2.7
+```
+cd /opt
+wget --no-check-certificate https://www.python.org/ftp/python/2.7.6/Python-2.7.6.tar.xz
+tar xf Python-2.7.6.tar.xz
+cd Python-2.7.6
+./configure --prefix=/usr/local
+make && make altinstall
+```
+
+Now you can use the script with the new python version, note that also python 2.6 it's still present so you need to specify the full path of the new python in order to run the script
+```
+/usr/local/bin/python2.7 lvm2qcow2.py
+```
+
 
 ##Usage and options
 
