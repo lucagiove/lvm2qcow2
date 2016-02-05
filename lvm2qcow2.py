@@ -127,7 +127,7 @@ class Images():
     def keep_only(self, copies):
         # TODO delete also md5sum file
         # 0 means infinite so the loop should not be executed
-        print "images:", self.files.pop
+        print "images:", self.files
         print "number of copies to keep:", copies
         while (len(self.files) > copies) and (copies != 0):
             image_to_remove = self.files.pop()
