@@ -50,7 +50,7 @@ class Device():
             print "ERROR:", e.output
             sys.exit(1)
         except OSError as e:
-            print "OSError: lvdisplay command not found"
+            print "OSError: {}".format(e)
             sys.exit(1)
         else:
             lv_path = re.findall('LV Path\s+(.+)', out)
@@ -93,7 +93,7 @@ class Device():
                 print "ERROR:", e.output
                 sys.exit(1)
         except OSError as e:
-            print "OSError: lvcreate command not found"
+            print "OSError: {}".format(e)
             sys.exit(1)
         # adding the full path
         snapshot_name = os.path.join(os.path.dirname(self.path), name)
@@ -112,7 +112,7 @@ class Device():
             print "ERROR:", e.output
             sys.exit(1)
         except OSError as e:
-            print "OSError: lvremove command not found"
+            print "OSError: {}".format(e)
             sys.exit(1)
 
         return snapshot_name
@@ -156,7 +156,7 @@ def _qemu_img_cmd(source, destination, image):
         print "ERROR:", e.output
         sys.exit(1)
     except OSError as e:
-        print "OSError: qemu-img command not found"
+        print "OSError: {}".format(e)
         sys.exit(1)
     else:
         return destination
