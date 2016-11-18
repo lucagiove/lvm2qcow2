@@ -160,7 +160,7 @@ class Images:
         logger.debug("number of copies to keep: %s", copies)
         while (len(self.files) > copies) and (copies != 0):
             image_to_remove = self.files.pop()
-            logger.info("removing image: {}".format(image_to_remove[0]))
+            logger.info("removing image: {}".format(image_to_remove))
             try:
                 # added full path to avoid aliases that works with -i
                 subprocess.check_output(['/bin/rm', image_to_remove],
@@ -250,11 +250,11 @@ def main():
 
     # Create the lv snapshot
     snapshot = src_device.create_snapshot()
-    logger.info("created snapshot: {}".format(snapshot))
+    logger.debug("created snapshot: {}".format(snapshot))
     qcow2_file = _qemu_img_cmd(snapshot, dst_dir, image)
     logger.info("created image: {}".format(qcow2_file))
     snapshot = src_device.delete_snapshot()
-    logger.info("deleted: {}".format(snapshot))
+    logger.debug("deleted snapshot: {}".format(snapshot))
 
     # Delete old copies
     images = Images(dst_dir, image_prefix)
