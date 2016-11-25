@@ -1,9 +1,10 @@
-#lvm2qcow2
+# lvm2qcow2
 
 Script that create a live copy of a logical volume and convert it in qcow2 format
 
-##Suggested installation
-That's just an example by the way the paths and filenames should be kept for 
+## Suggested installation
+That's just an example by the way the paths and filenames should be kept for
+reference.  
 Has been tested on ubuntu 12.04, 14.04 and CentOS 6.x
 
 *Note: Require python >= 2.7*
@@ -30,14 +31,20 @@ Create a script for a daily basis backup
 Example of script
 ```
 #!/bin/bash
-# lvm2qcow2.py -s path-to-logical-volume -d path-to-folder -n number-of-copies-to-keep >> /var/log/snapshot-backup.log
-lvm2qcow2.py -s /dev/raid/mail-root -d /mnt/hd-2TB/snapshots -n 5 >> /var/log/snapshot-backup.log
-lvm2qcow2.py -s /dev/raid/mail-var -d /mnt/hd-2TB/snapshots -n 5 >> /var/log/snapshot-backup.log
-lvm2qcow2.py -s /dev/raid/pdc-system -d /mnt/hd-2TB/snapshots -n 5 >> /var/log/snapshot-backup.log
-lvm2qcow2.py -s /dev/raid/pdc-shares -d /mnt/hd-2TB/snapshots -n 5 >> /var/log/snapshot-backup.log
+# lvm2qcow2.py -s path-to-logical-volume -d path-to-folder -n number-of-copies-to-keep | tee -a /var/log/snapshot-backup.log > /dev/null
+lvm2qcow2.py -s /dev/raid/mail-root -d /mnt/hd-2TB/snapshots -n 5 | tee -a /var/log/snapshot-backup.log > /dev/null
+lvm2qcow2.py -s /dev/raid/mail-var -d /mnt/hd-2TB/snapshots -n 5 | tee -a /var/log/snapshot-backup.log > /dev/null
+lvm2qcow2.py -s /dev/raid/pdc-system -d /mnt/hd-2TB/snapshots -n 5 | tee -a /var/log/snapshot-backup.log > /dev/null
+lvm2qcow2.py -s /dev/raid/pdc-shares -d /mnt/hd-2TB/snapshots -n 5 | tee -a /var/log/snapshot-backup.log > /dev/null
 ```
 
-Verify in /etc/crontab when daily jobs are executed to make sure that there is enough time during the night to complete the jobs, normally is a good choice to change from 6 to 1 in the night the line:
+**Note:** if you have configured an alias to administrator mail for
+_root@localhost_ you'll be notified only for errors.  
+If you want to be always notified just remove redirection to `> /dev/null`
+
+Verify in /etc/crontab when daily jobs are executed to make sure that there is
+enough time during the night to complete the jobs, normally is a good choice to
+change from 6 to 1 in the night the line:
 
     25 1    * * *   root    test -x /usr/sbin/anacron || ( cd / && run-parts --report /etc/cron.daily )
 
@@ -57,7 +64,7 @@ PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin
 
 ```
 
-##Usage and options
+## Usage and options
 
 ```
 usage: lvm2qcow2.py [-h] -s SOURCE -d DESTINATION [-i IMAGE_PREFIX]
@@ -79,14 +86,16 @@ optional arguments:
   --version             show program's version number and exit
 ```
 
-###Note for CentOS 6.X
-On CentOS 6.X there is only python 2.6 so it's necessary to compile python2.7 or major
+### Note for CentOS 6.X
+On CentOS 6.X there is only python 2.6 so it's necessary to compile python2.7
+or major
 
 In order to compile Python you must first install the development tools:
 ```
 yum groupinstall "Development tools" -y
 ```
-You also need a few extra libs installed before compiling Python or else you will run into problems later when trying to install various packages:
+You also need a few extra libs installed before compiling Python or else you
+will run into problems later when trying to install various packages:
 ```
 yum install zlib-devel -y
 yum install bzip2-devel -y
@@ -105,7 +114,9 @@ cd Python-2.7.6
 make && make altinstall
 ```
 
-Now you can use the script with the new python version, note that also python 2.6 it's still present so you need to specify the full path of the new python in order to run the script
+Now you can use the script with the new python version, note that also python
+2.6 it's still present so you need to specify the full path of the new python
+in order to run the script
 ```
 /usr/local/bin/python2.7 lvm2qcow2.py
 ```
