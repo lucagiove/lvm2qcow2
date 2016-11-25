@@ -26,8 +26,8 @@ import logging
 from argparse import ArgumentParser
 
 __author__ = "Luca Giovenzana <luca@giovenzana.org>"
-__date__ = "2016-11-16"
-__version__ = "0.2alpha1"
+__date__ = "2016-11-25"
+__version__ = "0.2.0"
 
 
 # TODO add parameter defaults and help
@@ -38,7 +38,7 @@ __version__ = "0.2alpha1"
 # TODO write a run function to include subprocess code
 # TODO check image file already exists
 # TODO if exception occurs snapshot should be removed
-# TODO print data transferrend and the time
+# TODO print data transferred and the time required
 
 
 class LogFilterLessThan(logging.Filter):
