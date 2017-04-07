@@ -26,8 +26,8 @@ import logging
 from argparse import ArgumentParser
 
 __author__ = "Luca Giovenzana <luca@giovenzana.org>"
-__date__ = "2016-11-25"
-__version__ = "0.2.0"
+__date__ = "2017-04-07"
+__version__ = "0.2.1"
 
 
 # TODO add parameter defaults and help
@@ -48,6 +48,7 @@ class LogFilterLessThan(logging.Filter):
 
     def filter(self, record):
         return True if record.levelno < self.max_level else False
+
 
 # FIXME change logging level for production
 # create logger
@@ -106,6 +107,7 @@ class Device:
         if name is None:
             name = '{}-lvm2qcow2-snapshot'.format(self.lv)
         try:
+            logger.debug("snapshot size: {}".format(snapshot_size))
             subprocess.check_output(['lvcreate', '-s', self.path,
                                      '-n', name,
                                      '-L', snapshot_size],
@@ -117,7 +119,7 @@ class Device:
                 # delete the pending snapshot
                 self.delete_snapshot(name)
                 # recursively create the snapshot
-                self.create_snapshot(name)
+                self.create_snapshot(name, snapshot_size)
             else:
                 logger.error(e.output)
                 sys.exit(1)
@@ -215,8 +217,12 @@ def main():
                              " otherwise keeps the number of specified copies")
 
     parser.add_argument("-S", "--snapshot-size",
-                        action='store', dest='SIZE', type=int,
-                        help="")
+                        action='store', dest='SNAPSHOT_SIZE', type=str, default="5g",
+                        help="size of the temporary logical volume snapshot,"
+                             " this is the maximum size of the change accepted"
+                             " while doing the backup."
+                             " WARNING if the 100 usage of the lv snapshot"
+                             " is reached the backup will be corrupted.")
 
     parser.add_argument('--version', action='version',
                         version="%(prog)s {}".format(__version__))
@@ -249,7 +255,7 @@ def main():
     logger.debug("image: {}".format(image))
 
     # Create the lv snapshot
-    snapshot = src_device.create_snapshot()
+    snapshot = src_device.create_snapshot(snapshot_size=args.SNAPSHOT_SIZE)
     logger.debug("created snapshot: {}".format(snapshot))
     qcow2_file = _qemu_img_cmd(snapshot, dst_dir, image)
     logger.info("created image: {}".format(qcow2_file))
@@ -261,6 +267,7 @@ def main():
     images.keep_only(args.COPIES)
 
     return 0
+
 
 if __name__ == '__main__':
     main()
