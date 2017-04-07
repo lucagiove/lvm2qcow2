@@ -31,7 +31,7 @@ Create a script for a daily basis backup
 Example of script
 ```
 #!/bin/bash
-# lvm2qcow2.py -s path-to-logical-volume -d path-to-folder -n number-of-copies-to-keep | tee -a /var/log/snapshot-backup.log > /dev/null
+# lvm2qcow2.py -s path-to-logical-volume -d path-to-folder -n number-of-copies-to-keep -S 5g| tee -a /var/log/snapshot-backup.log > /dev/null
 lvm2qcow2.py -s /dev/raid/mail-root -d /mnt/hd-2TB/snapshots -n 5 | tee -a /var/log/snapshot-backup.log > /dev/null
 lvm2qcow2.py -s /dev/raid/mail-var -d /mnt/hd-2TB/snapshots -n 5 | tee -a /var/log/snapshot-backup.log > /dev/null
 lvm2qcow2.py -s /dev/raid/pdc-system -d /mnt/hd-2TB/snapshots -n 5 | tee -a /var/log/snapshot-backup.log > /dev/null
@@ -67,8 +67,8 @@ PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin
 ## Usage and options
 
 ```
-usage: lvm2qcow2.py [-h] -s SOURCE -d DESTINATION [-i IMAGE_PREFIX]
-                    [-n COPIES] [-S SIZE] [--version]
+  usage: lvm2qcow2.py [-h] -s SOURCE -d DESTINATION [-i IMAGE_PREFIX]
+                    [-n COPIES] [-S SNAPSHOT_SIZE] [--version]
 
 optional arguments:
   -h, --help            show this help message and exit
@@ -82,7 +82,11 @@ optional arguments:
   -n COPIES, --number-of-copies COPIES
                         0 means infinite, 1 keeps only the current image
                         otherwise keeps the number of specified copies
-  -S SIZE, --snapshot-size SIZE
+  -S SNAPSHOT_SIZE, --snapshot-size SNAPSHOT_SIZE
+                        size of the temporary logical volume snapshot, this is
+                        the maximum size of the change accepted while doing
+                        the backup. WARNING if the 100 usage of the lv
+                        snapshot is reached the backup will be corrupted.
   --version             show program's version number and exit
 ```
 
