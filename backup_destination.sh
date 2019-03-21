@@ -11,4 +11,5 @@ elif [[ -d "$DST_2" ]]; then
 	DST_AVAIL=$DST_2
 else
 	echo "ERROR: Cannot find backup destination"
+	exit 1
 fi
